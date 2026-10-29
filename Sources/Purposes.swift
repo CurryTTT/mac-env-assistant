@@ -11,15 +11,18 @@ struct SetupPurpose: Identifiable {
 let setupPurposes: [SetupPurpose] = [
     .init(id: "ai-code", title: "AI 编程", detail: "按需选择 Codex CLI、Claude Code、Cursor 等", icon: "sparkles", tools: ["codex", "claude", "cursor", "vscode", "git"]),
     .init(id: "local-ai", title: "本地 AI", detail: "本地模型工具与可选 Python 环境", icon: "desktopcomputer", tools: ["ollama", "python", "uv"]),
-    .init(id: "web", title: "前端开发", detail: "Node.js、包管理与代码编辑器", icon: "curlybraces", tools: ["node", "pnpm", "vscode", "git"]),
-    .init(id: "python", title: "Python 开发", detail: "选择解释器版本与依赖管理工具", icon: "terminal", tools: ["python", "uv", "vscode", "git"]),
+    .init(id: "web", title: "前端开发", detail: "Node.js、包管理与代码编辑器", icon: "curlybraces", tools: ["node", "pnpm", "vscode", "git", "webstorm", "zed"]),
+    .init(id: "python", title: "Python 开发", detail: "选择解释器版本与依赖管理工具", icon: "terminal", tools: ["python", "uv", "vscode", "git", "pycharm"]),
     .init(id: "containers", title: "容器开发", detail: "按需安装 Docker Desktop", icon: "shippingbox", tools: ["docker"]),
-    .init(id: "embedded", title: "嵌入式开发", detail: "Arduino IDE 或 PlatformIO；板卡由你选择", icon: "cpu", tools: ["arduino", "platformio", "vscode", "git"]),
+    .init(id: "embedded", title: "嵌入式开发", detail: "Arduino IDE 或 PlatformIO；板卡由你选择", icon: "cpu", tools: ["arduino", "platformio", "vscode", "git", "clion", "cmake", "ninja"]),
     .init(id: "basic", title: "基础工具", detail: "仅配置命令行基础工具", icon: "hammer", tools: ["git", "brew", "clt"]),
-    .init(id: "software-engineering", title: "软件工程", detail: "IDE、API 调试、Java / Go 与构建工具", icon: "wrench.and.screwdriver", tools: ["vscode", "git", "idea", "postman", "java", "maven", "go", "cmake"]),
+    .init(id: "software-engineering", title: "软件工程", detail: "IDE、API 调试、Java / Go 与构建工具", icon: "wrench.and.screwdriver", tools: ["vscode", "git", "idea", "postman", "java", "maven", "go", "cmake", "gradle", "clion", "github-desktop", "gh", "bruno", "insomnia"]),
     .init(id: "game-development", title: "游戏开发", detail: "游戏引擎、管理器与 3D 资源制作", icon: "gamecontroller", tools: ["godot", "unity", "blender", "vscode", "git", "cmake"]),
-    .init(id: "database", title: "数据库", detail: "选择数据库与图形客户端，不自动启动服务", icon: "externaldrive", tools: ["postgresql", "mysql", "redis", "sqlite", "dbeaver"]),
-    .init(id: "html-design", title: "网页 / HTML 设计", detail: "编辑器、界面设计与浏览器预览", icon: "paintbrush", tools: ["vscode", "cursor", "figma", "firefox"])
+    .init(id: "database", title: "数据库", detail: "选择数据库与图形客户端，不自动启动服务", icon: "externaldrive", tools: ["postgresql", "mysql", "redis", "sqlite", "dbeaver", "tableplus"]),
+    .init(id: "html-design", title: "网页 / HTML 设计", detail: "编辑器、界面设计与浏览器预览", icon: "paintbrush", tools: ["vscode", "cursor", "figma", "firefox", "sublime-text"]),
+    .init(id: "mobile", title: "Android 开发", detail: "选择 IDE 和构建工具；SDK 与模拟器自行配置", icon: "iphone", tools: ["android-studio", "java", "gradle", "git"]),
+    .init(id: "terminal", title: "终端效率", detail: "终端、搜索与脚本工具；不改写 shell 配置", icon: "terminal", tools: ["iterm2", "jq", "ripgrep", "fd", "fzf", "tmux", "shellcheck"]),
+    .init(id: "api", title: "API 调试", detail: "按需选择 API 客户端，不导入凭据", icon: "network", tools: ["postman", "bruno", "insomnia"])
 ]
 
 func toolsForPurposes(_ ids: Set<String>) -> Set<String> {

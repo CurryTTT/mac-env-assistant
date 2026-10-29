@@ -36,7 +36,7 @@ extension Model {
         let generation = UUID()
         readinessGeneration = generation
         let ids = runSelected, project = projectResult
-        let choices = savedRun?.versions ?? [:]
+        let choices = runVersions
         let missingProject = states["project-venv"] != nil && project == nil
         Task {
             let verified = await Task.detached {
@@ -48,12 +48,15 @@ extension Model {
             guard generation == readinessGeneration else { return }
             if missingProject { checks.append(.init(id: "project-not-ready", title: "项目独立环境", level: "blocked", detail: "项目虚拟环境尚未创建或验证。全局 Python 可运行不代表项目环境已就绪。")) }
             readiness = checks
+            readinessDate = Date()
+            readinessIsHistorical = false
             runResults = verified.0
             readinessBusy = false
+            saveRun()
         }
     }
     func resetReadiness() {
-        readinessGeneration = UUID(); readinessBusy = false; readiness = []
+        readinessGeneration = UUID(); readinessBusy = false; readiness = []; readinessDate = nil; readinessIsHistorical = false
     }
     func chooseProject() {
         let panel = NSOpenPanel()
@@ -150,8 +153,14 @@ extension ContentView {
             if !model.runSelected.isEmpty && !model.installing {
                 HStack { Text("运行状态验证").font(.headline); if model.readinessBusy { ProgressView().controlSize(.small) }; Spacer(); Button("重新验证", action: model.verifyReadiness).disabled(model.readinessBusy) }
                 readinessSummary
+                if let date = model.readinessDate { Text((model.readinessIsHistorical ? "历史验证（请重新验证当前状态）：" : "验证时间：") + date.formatted()).font(.caption2).foregroundStyle(.secondary) }
                 if model.readiness.isEmpty { Text("尚未完成运行状态验证。").font(.caption).foregroundStyle(.secondary) }
-                ScrollView { VStack(alignment: .leading, spacing: 10) { ForEach(model.readiness) { checkRow($0) } } }.frame(maxHeight: 155)
+                ScrollView { VStack(alignment: .leading, spacing: 10) { ForEach(model.readiness) { item in
+                    VStack(alignment: .leading, spacing: 6) {
+                        checkRow(item)
+                        if !model.readinessIsHistorical { readinessActions(item) }
+                    }
+                } } }.frame(maxHeight: 155)
             }
         }
     }

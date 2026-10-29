@@ -236,7 +236,7 @@ func readinessChecks(ids: Set<String>, probes: [String: Probe], project: Project
                 let ready = (response as? HTTPURLResponse)?.statusCode == 200 && version != nil
                 items.append(.init(id: item.id, title: "Ollama 服务", level: ready ? "ok" : "warning", detail: ready ? "本机服务可连接，版本 \(version!)。未验证模型推理。" : "程序已安装，但服务响应未通过验证。"))
             } catch { items.append(.init(id: item.id, title: "Ollama 服务", level: "warning", detail: "程序已安装，本机服务尚不可连接。请先启动服务，再重新验证。")) }
-        } else if ["codex", "claude", "cursor"].contains(item.id) {
+        } else if ["codex", "claude", "cursor", "gh"].contains(item.id) {
             items.append(.init(id: item.id, title: item.name, level: "warning", detail: "已安装；账号登录、订阅及模型请求状态未检查，请在软件内确认。"))
         } else {
             items.append(.init(id: item.id, title: item.name, level: applicationNames[item.id] == nil ? "ok" : "warning", detail: applicationNames[item.id] == nil ? "命令行版本响应正常；未验证实际项目。" : "应用包及主程序存在；首次启动状态尚未验证，请在软件内确认。"))

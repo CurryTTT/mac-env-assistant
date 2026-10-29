@@ -28,7 +28,7 @@ let catalog: [Component] = [
     .init(id: "claude", name: "Claude Code", subtitle: "命令行编程助手；登录由你完成", icon: "terminal", groups: ["AI 编程"], dependencies: ["brew"], paths: ["~/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"], arguments: ["--version"]),
     .init(id: "cursor", name: "Cursor", subtitle: "AI 代码编辑器；账号及订阅自行配置", icon: "cursorarrow", groups: ["AI 编程"], dependencies: ["brew"], paths: [], arguments: []),
     .init(id: "docker", name: "Docker Desktop", subtitle: "容器环境；首次启动需自行完成授权及初始化", icon: "shippingbox", groups: ["容器"], dependencies: ["brew"], paths: [], arguments: [])
-] + expandedComponents
+] + expandedComponents + developerComponents
 
 struct Probe: Codable {
     let state: String
@@ -102,6 +102,16 @@ final class Model: ObservableObject {
     @Published var installing = false
     @Published var states: [String: String] = [:]
     @Published var runSelected = Set<String>()
+    @Published var runVersions: [String: String] = [:]
+    @Published var historyPresented = false
+    @Published var historySelectedKey: String?
+    @Published var historyRecords = [InstallSnapshot]()
+    @Published var historyWarning = ""
+    var runID: UUID?
+    var runDate = Date()
+    var runProjectEnabled = false
+    var runProjectDirectory: String?
+    let historyStore: RunHistoryStore
     @Published var runResults: [String: Probe] = [:]
     @Published var issues: [InstallIssue] = []
     @Published var summary = "尚未开始安装"
@@ -117,12 +127,15 @@ final class Model: ObservableObject {
     @Published var projectResult: ProjectEnvironment?
     @Published var readiness = [CheckItem]()
     @Published var readinessBusy = false
+    @Published var readinessDate: Date?
+    @Published var readinessIsHistorical = false
     var readinessGeneration = UUID()
     @Published var schemeMessage = ""
     private var control = InstallControl()
     static let historyURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("EnvSetupAssistant/last-run.json")
-    init() {
-        if let data = try? Data(contentsOf: Self.historyURL), let record = try? JSONDecoder().decode(InstallSnapshot.self, from: data) { savedRun = record }
+    init(historyRoot: URL? = nil) {
+        historyStore = RunHistoryStore(root: historyRoot ?? Self.historyURL.deletingLastPathComponent())
+        savedRun = try? historyStore.read(historyStore.latestURL)
     }
     var actions: [String: InstallAction] { Dictionary(uniqueKeysWithValues: plan.map { ($0.id, installAction(for: $0, probes: results, selectedVersion: versions[$0.id] ?? "auto")) }) }
     var hasBlocker: Bool { actions.values.contains { if case .blocked = $0 { return true }; return false } }
@@ -133,11 +146,12 @@ final class Model: ObservableObject {
     var taskSucceeded: Bool { !states.isEmpty && states.values.allSatisfy { ["已复用", "已安装并验证", "已创建并验证"].contains($0) } }
     var relevantTools: Set<String> { customMode ? Set(catalog.map(\.id)) : toolsForPurposes(purposes) }
     var visibleTools: [Component] {
-        catalog.filter { (showAllTools || purposes.isEmpty || relevantTools.contains($0.id)) && (query.isEmpty || ($0.name + $0.subtitle).localizedCaseInsensitiveContains(query)) }
+        catalog.filter { (showAllTools || purposes.isEmpty || relevantTools.contains($0.id)) && (groupFilter == "全部" || $0.groups.contains(groupFilter)) && (query.isEmpty || ($0.name + $0.subtitle + $0.groups.joined()).localizedCaseInsensitiveContains(query)) }
     }
     var purposeSummary: String { customMode ? "自定义选择" : setupPurposes.filter { purposes.contains($0.id) }.map(\.title).joined(separator: "、") }
     func beginCustom() {
         guard !installing && bootstrapID == nil else { return }
+        groupFilter = "全部"
         customMode = true
         showAllTools = true
         query = ""
@@ -146,6 +160,7 @@ final class Model: ObservableObject {
     }
     func continuePurpose() {
         guard !purposes.isEmpty else { return }
+        groupFilter = "全部"
         customMode = false
         selected.formIntersection(relevantTools)
         showAllTools = false
@@ -195,22 +210,50 @@ final class Model: ObservableObject {
         versions[id] = value
         scan()
     }
+    func beginRunRecord() {
+        storageError = ""
+        do { try historyStore.migrateLegacyLatest() }
+        catch { storageError = "旧记录未能归档：" + error.localizedDescription }
+        runID = UUID(); runDate = Date()
+        runSelected = selected
+        runVersions = versions.filter { required.contains($0.key) }
+        runProjectEnabled = wantsProjectEnvironment
+        runProjectDirectory = wantsProjectEnvironment ? projectDirectory : nil
+    }
+    func currentSnapshot() -> InstallSnapshot {
+        InstallSnapshot(date: runDate, selected: runSelected.sorted(), states: states, summary: installing ? "任务运行中；如已中断，请重新检测后重试。" : summary, log: log, versions: runVersions, projectEnabled: runProjectEnabled, projectDirectory: runProjectDirectory, projectResult: projectResult, issues: issues, runID: runID, readiness: readiness.isEmpty ? nil : readiness, readinessDate: readinessDate)
+    }
     func saveRun() {
-        let record = InstallSnapshot(selected: selected.sorted(), states: states, summary: installing ? "任务运行中；如已中断，请重新检测后重试。" : summary, log: log, versions: versions, projectEnabled: wantsProjectEnvironment, projectDirectory: wantsProjectEnvironment ? projectDirectory : nil, projectResult: projectResult, issues: issues)
+        guard runID != nil else { return }
+        let record = currentSnapshot()
         do {
-            try FileManager.default.createDirectory(at: Self.historyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(record).write(to: Self.historyURL, options: .atomic)
+            try historyStore.save(record)
             savedRun = record
         } catch { storageError = "任务记录保存失败：" + error.localizedDescription }
     }
-    func restoreRun() {
-        guard let record = savedRun, !installing, bootstrapID == nil else { return }
+    func showHistory() {
+        let result = historyStore.load()
+        historyRecords = result.records
+        historyWarning = result.unreadable == 0 ? "" : "有 \(result.unreadable) 份记录无法读取，已跳过；原文件保留。"
+        historyPresented = true
+    }
+    func restoreRun(_ chosen: InstallSnapshot? = nil) {
+        guard let record = chosen ?? savedRun, !installing, !scanning, bootstrapID == nil else { return }
         selected = Set(record.selected).intersection(Set(catalog.map(\.id)))
         versions = (record.versions ?? [:]).filter { id, value in versionOptions(id).contains { $0.id == value } }
         projectEnvironmentEnabled = record.projectEnabled ?? false
         projectDirectory = record.projectDirectory ?? ""
         projectResult = record.projectResult
         resetReadiness()
+        runID = record.runID ?? UUID(); runDate = record.date
+        runVersions = versions
+        runProjectEnabled = record.projectEnabled ?? false
+        runProjectDirectory = record.projectDirectory
+        readiness = record.readiness ?? []
+        readinessDate = record.readinessDate
+        readinessIsHistorical = !readiness.isEmpty
+        historyPresented = false
+        preflightReport = nil
         states = record.states
         issues = record.issues ?? []
         runSelected = Set(record.selected)
@@ -267,8 +310,9 @@ final class Model: ObservableObject {
         InstallAppDelegate.busy = true
         page = 3
         states = Dictionary(uniqueKeysWithValues: plan.map { ($0.id, "待执行") })
-        runSelected = selected
+        beginRunRecord()
         runResults = [:]
+        projectResult = nil
         issues = []
         resetReadiness()
         states[id] = "准备系统安装"
@@ -340,14 +384,13 @@ final class Model: ObservableObject {
         stopRequested = false
         control = InstallControl()
         states = Dictionary(uniqueKeysWithValues: steps.map { ($0.id, "待执行") })
-        runSelected = selected
+        beginRunRecord()
         runResults = [:]
         projectResult = nil
         issues = []
         resetReadiness()
         summary = "正在重新检查环境…"
         log = "开始时间：\(Date().formatted())\n版本响应验证不代表完整项目兼容性验证。\n"
-        storageError = ""
         page = 3
         saveRun()
         let currentControl = control
@@ -490,6 +533,7 @@ struct ContentView: View {
                 }
             }
         }.navigationSplitViewStyle(.balanced).frame(minWidth: 980, minHeight: 740).tint(.accentColor).onAppear { model.scan() }
+            .sheet(isPresented: $model.historyPresented) { RunHistoryView(model: model) }
             .onChange(of: model.page) { _, value in if value == 2 { model.runPreflight() } }
             .onChange(of: model.preflightFingerprint) { _, _ in
                 model.preflightReport = nil
@@ -587,7 +631,15 @@ struct ContentView: View {
                 Spacer()
                 if !model.customMode { Toggle("查看全部工具", isOn: $model.showAllTools).toggleStyle(.switch).controlSize(.small) }
             }
-            TextField("搜索组件", text: $model.query).textFieldStyle(.roundedBorder)
+            HStack {
+                TextField("搜索软件、命令或用途", text: $model.query).textFieldStyle(.roundedBorder)
+                Picker("类别", selection: $model.groupFilter) {
+                    Text("全部").tag("全部")
+                    ForEach(Array(Set(catalog.flatMap(\.groups))).sorted(), id: \.self) { Text($0).tag($0) }
+                }.frame(width: 200)
+                Text("\(model.visibleTools.count) 项").font(.caption).foregroundStyle(.secondary)
+            }
+            if model.visibleTools.isEmpty { Text("没有匹配的软件，可清空搜索或切换类别。").font(.callout).foregroundStyle(.secondary) }
             List {
                 Group {
                     ForEach(model.visibleTools) { item in
@@ -754,9 +806,7 @@ struct ContentView: View {
             }.font(.caption)
             Spacer(minLength: 0)
             HStack {
-                if model.savedRun != nil && !model.installing && model.bootstrapID == nil {
-                    Button("载入上次记录", action: model.restoreRun)
-                }
+                Button("安装历史…", action: model.showHistory).disabled(model.installing || model.bootstrapID != nil)
                 Spacer()
                 Button("导出日志…") {
                     let panel = NSSavePanel()
@@ -848,7 +898,11 @@ enum Launcher {
             return
         }
         if CommandLine.arguments.contains("--expanded-test") {
-            do { try expandedCatalogTests() } catch { fputs("Catalog test failed: \(error)\n", stderr); exit(1) }
+            do { try expandedCatalogTests(); developerCatalogTests() } catch { fputs("Catalog test failed: \(error)\n", stderr); exit(1) }
+            return
+        }
+        if CommandLine.arguments.contains("--history-test") {
+            do { try runHistoryTests() } catch { fputs("History test failed: \(error)\n", stderr); exit(1) }
             return
         }
         if CommandLine.arguments.contains("--installer-test") { installerSelfTests(); installDiagnosticsTests(); bootstrapSelfTests(); versionSelectionTests(); purposeSelfTests(); return }

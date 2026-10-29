@@ -89,7 +89,7 @@ func expandedCatalogTests() throws {
     }
     let java = catalog.first { $0.id == "java" }!
     if case .install(let command) = installAction(for: java, probes: ["java": missing, "brew": good, "clt": good], selectedVersion: "17") { precondition(command.arguments.last == "homebrew/core/openjdk@17") } else { preconditionFailure("Invalid JDK version plan") }
-    precondition(toolsForPurposes(["html-design"]) == ["vscode", "cursor", "figma", "firefox"])
+    precondition(toolsForPurposes(["html-design"]) == ["vscode", "cursor", "figma", "firefox", "sublime-text"])
     precondition(!toolsForPurposes(["html-design"]).contains("node"))
     precondition(!toolsForPurposes(["database"]).contains("unity"))
     let conflict = Probe(state: "版本冲突", detail: "MySQL data migration required", path: "/mock/mysqld")

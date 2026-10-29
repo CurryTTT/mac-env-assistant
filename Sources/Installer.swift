@@ -14,9 +14,9 @@ enum InstallAction: Equatable {
     case blocked(String)
 }
 
-let formulaNames = ["git": "git", "uv": "uv", "python": "python3", "node": "node", "pnpm": "pnpm", "ollama": "ollama", "cmake": "cmake", "ninja": "ninja", "openocd": "open-ocd", "esptool": "esptool", "dfu": "dfu-util"] .merging(expandedFormulaNames) { _, new in new }
-let caskNames = ["vscode": "visual-studio-code", "arduino": "arduino-ide", "codex": "codex", "claude": "claude-code", "cursor": "cursor", "docker": "docker-desktop"] .merging(expandedCaskNames) { _, new in new }
-let applicationNames = ["vscode": "Visual Studio Code.app", "arduino": "Arduino IDE.app", "cursor": "Cursor.app", "docker": "Docker.app"] .merging(expandedApplicationNames) { _, new in new }
+let formulaNames = ["git": "git", "uv": "uv", "python": "python3", "node": "node", "pnpm": "pnpm", "ollama": "ollama", "cmake": "cmake", "ninja": "ninja", "openocd": "open-ocd", "esptool": "esptool", "dfu": "dfu-util"] .merging(expandedFormulaNames) { _, new in new }.merging(developerFormulaNames) { _, new in new }
+let caskNames = ["vscode": "visual-studio-code", "arduino": "arduino-ide", "codex": "codex", "claude": "claude-code", "cursor": "cursor", "docker": "docker-desktop"] .merging(expandedCaskNames) { _, new in new }.merging(developerCaskNames) { _, new in new }
+let applicationNames = ["vscode": "Visual Studio Code.app", "arduino": "Arduino IDE.app", "cursor": "Cursor.app", "docker": "Docker.app"] .merging(expandedApplicationNames) { _, new in new }.merging(developerApplicationNames) { _, new in new }
 
 func installAction(for component: Component, probes: [String: Probe], selectedVersion: String = "auto") -> InstallAction {
     guard versionOptions(component.id).contains(where: { $0.id == selectedVersion }) else { return .blocked("请选择列表中支持的版本。") }
@@ -78,6 +78,9 @@ struct InstallSnapshot: Codable {
     var projectDirectory: String? = nil
     var projectResult: ProjectEnvironment? = nil
     var issues: [InstallIssue]? = nil
+    var runID: UUID? = nil
+    var readiness: [CheckItem]? = nil
+    var readinessDate: Date? = nil
 }
 
 // The lock protects the sole mutable field across the worker and main queues.

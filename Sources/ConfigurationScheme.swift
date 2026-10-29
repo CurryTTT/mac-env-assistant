@@ -93,7 +93,7 @@ func runtimeReadinessTests() async throws {
     let blocked = await performPreflight(fingerprint: "test", components: [component], actions: ["git": .blocked("test conflict")], versions: [:], probes: [:], base: [:], project: nil)
     precondition(blocked.blocked)
     await MainActor.run {
-        let model = Model()
+        let model = Model(historyRoot: folder.appendingPathComponent("history"))
         model.selected = ["git"]; model.results = ["git": existing]
         model.preflightReport = PreflightReport(fingerprint: model.preflightFingerprint, date: Date(), items: [])
         precondition(model.preflightPassed)
@@ -101,6 +101,15 @@ func runtimeReadinessTests() async throws {
         precondition(!model.preflightPassed)
         model.preflightReport = PreflightReport(fingerprint: model.preflightFingerprint, date: Date().addingTimeInterval(-600), items: [])
         precondition(!model.preflightPassed)
+        model.versions = ["python": "3.12"]
+        model.beginRunRecord()
+        let run = model.currentSnapshot()
+        model.versions = ["python": "3.14"]
+        model.selected = ["node"]
+        model.savedRun = InstallSnapshot(selected: ["python"], states: [:], summary: "other", log: "", versions: ["python": "3.11"])
+        precondition(model.runVersions["python"] == "3.12")
+        precondition(model.currentSnapshot().selected == ["python"] && model.currentSnapshot().versions?["python"] == "3.12")
+        precondition(model.currentSnapshot().runID == run.runID && model.currentSnapshot().date == run.date)
     }
     print("PASS: installed versus running Docker, missing installation, unknown account status, preflight reuse/conflict (fake executables, no services started)")
 }

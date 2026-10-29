@@ -1,12 +1,12 @@
 # Mac Env Assistant · macOS 环境配置助手
 
-使用 SwiftUI 构建的 macOS 开发环境配置助手。按用途浏览或自定义选择工具，检查已有环境与版本，确认安装计划后执行安装，并管理 Python 项目环境、Git 身份和可复用配置方案。
+使用 SwiftUI 构建的 macOS 开发环境配置助手。按用途浏览或自定义选择工具，检查已有环境与版本，确认安装计划后执行安装，并管理 Python 项目环境、Git 身份和可复用配置方案。选择页面支持类别过滤和搜索。
 
-当前版本：**0.8.0，本机试用阶段**。
+当前版本：**0.9.0，本机试用阶段**。
 
 ## 下载
 
-[下载 v0.8.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.8.0/MacEnvAssistant-v0.8.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.8.0)
+[下载 v0.9.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.9.0/MacEnvAssistant-v0.9.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.9.0)
 
 适用于 Apple Silicon、macOS 14 及以上。打开 DMG，将应用拖入 Applications。当前仅有临时签名，尚未经过 Apple 公证。
 
@@ -14,6 +14,7 @@
 
 - **按用途配置与自定义选择**：AI 编程、本地 AI、软件工程、游戏开发、数据库、网页 / HTML 设计、前端、Python、容器及嵌入式开发。
 - **失败处理**：按安装日志提供网络、空间、权限、校验、文件冲突等排查提示；重新检测后生成新计划，已有可用工具优先复用，不自动重复执行失败命令。
+- **安装历史**：本机保留最近 20 次任务，查看当时选择、结果、失败提示及运行验证；载入后重新检测，不直接安装。
 - **已有环境复用**：检测常见安装位置，所选版本可用时直接复用；必要依赖自动合并，不自动勾选整套软件。
 - **版本选择**：支持部分 Python、Node.js、pnpm、JDK、PostgreSQL 和 MySQL 版本系列。
 - **安装前检查**：已知版本与入口冲突、空间、项目目录及常用下载服务连通性。
@@ -25,15 +26,19 @@
 
 ## 可选软件
 
+当前清单包含 51 个工具及基础组件，新增 20 个常用开发工具，安装来源见 [CATALOG_SOURCES.md](CATALOG_SOURCES.md)。新增工具默认只提供安装源当前版本，不承诺任意历史版本。
+
 | 用途 | 示例 |
 |---|---|
 | AI 编程 | Codex CLI、Claude Code、Cursor、VS Code |
-| 软件工程 | IntelliJ IDEA、Postman、CMake、Go、Java JDK、Maven |
+| 软件工程 | IntelliJ IDEA、PyCharm、WebStorm、CLion、Postman、Bruno、Insomnia、GitHub Desktop、GitHub CLI、CMake、Ninja、Go、Java JDK、Maven、Gradle |
 | 游戏开发 | Godot、Unity Hub、Blender |
-| 数据库 | PostgreSQL、MySQL、Redis、SQLite、DBeaver Community |
-| 网页设计 | VS Code、Cursor、Figma、Firefox |
+| 数据库 | PostgreSQL、MySQL、Redis、SQLite、DBeaver Community、TablePlus |
+| 网页设计 | VS Code、Cursor、Zed、Sublime Text、Figma、Firefox |
 | 本地 AI / Python | Ollama、Python、uv |
 | 前端 / 容器 / 嵌入式 | Node.js、pnpm、Docker Desktop、Arduino IDE、PlatformIO Core |
+| Android 开发 | Android Studio；SDK、模拟器和许可自行选择 |
+| 终端效率 | iTerm2、jq、ripgrep、fd、fzf、tmux、ShellCheck |
 
 第三方软件的订阅、许可、登录、引擎版本和首次启动设置由用户在对应产品中处理。
 
@@ -67,7 +72,7 @@ bash test.sh
 
 ## 本地数据
 
-任务记录和日志保存在 `~/Library/Application Support/EnvSetupAssistant/`，Git 备份位于其 `GitBackups/` 子目录。下载的 Homebrew 引导包在 `~/Library/Caches/EnvSetupAssistant/Packages/`。应用不上传这些日志和备份；分享日志前请检查个人路径及其他配置内容。
+任务记录和日志保存在 `~/Library/Application Support/EnvSetupAssistant/`，Git 备份位于其 `GitBackups/` 子目录。下载的 Homebrew 引导包在 `~/Library/Caches/EnvSetupAssistant/Packages/`。最近 20 次任务归档保存在 `Runs/` 子目录，单个任务状态更新沿用同一编号；运行验证带时间戳，历史结果不代表当前可用性。应用不上传这些日志和备份；分享日志前请检查个人路径及其他配置内容。
 
 ## 项目结构
 
@@ -77,4 +82,4 @@ bash test.sh
 
 ## 打包与正式签名
 
-拖拽安装包、Developer ID 签名和公证流程见 [Packaging/README.md](Packaging/README.md)。本机暂无可用签名证书，v0.8.0 仍为临时签名试用版，不能保证直接通过 Gatekeeper。
+拖拽安装包、Developer ID 签名和公证流程见 [Packaging/README.md](Packaging/README.md)。本机暂无可用签名证书，v0.9.0 仍为临时签名试用版，不能保证直接通过 Gatekeeper。
