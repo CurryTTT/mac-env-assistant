@@ -4,6 +4,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 # Install ds_store and mac_alias into your Python environment before running.
 python_bin="${PYTHON_BIN:-python3}"
+"$python_bin" -c "import ds_store, mac_alias"
 bash build.sh
 pkg="$root/.build/packaging"
 mkdir -p "$pkg/stage/.background"
@@ -22,5 +23,8 @@ hdiutil makehybrid -hfs -hfs-volume-name 'Mac Env Assistant' -hfs-openfolder "$p
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 output="dist/MacEnvAssistant-v${version}-macOS-$(uname -m).dmg"
 hdiutil convert "$pkg/final.dmg" -format UDZO -o "$output" -ov
+if [[ "${SIGNING_IDENTITY:--}" != "-" ]]; then
+  codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$output"
+fi
 hdiutil verify "$output"
 shasum -a 256 "$output"

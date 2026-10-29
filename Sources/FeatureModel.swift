@@ -149,6 +149,7 @@ extension ContentView {
         VStack(alignment: .leading, spacing: 8) {
             if !model.runSelected.isEmpty && !model.installing {
                 HStack { Text("运行状态验证").font(.headline); if model.readinessBusy { ProgressView().controlSize(.small) }; Spacer(); Button("重新验证", action: model.verifyReadiness).disabled(model.readinessBusy) }
+                readinessSummary
                 if model.readiness.isEmpty { Text("尚未完成运行状态验证。").font(.caption).foregroundStyle(.secondary) }
                 ScrollView { VStack(alignment: .leading, spacing: 10) { ForEach(model.readiness) { checkRow($0) } } }.frame(maxHeight: 155)
             }

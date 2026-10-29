@@ -77,6 +77,7 @@ struct InstallSnapshot: Codable {
     var projectEnabled: Bool? = nil
     var projectDirectory: String? = nil
     var projectResult: ProjectEnvironment? = nil
+    var issues: [InstallIssue]? = nil
 }
 
 // The lock protects the sole mutable field across the worker and main queues.
@@ -90,6 +91,7 @@ final class InstallControl: @unchecked Sendable {
 struct InstallOutcome {
     let states: [String: String]
     let summary: String
+    var issues: [InstallIssue] = []
 }
 
 // All mutating process calls pass through this runner. Tests inject a fake runner.
@@ -187,18 +189,22 @@ func executeInstall(
                 return .init(states: states, summary: "计划变化，已停止。")
             }
             update(item.id, "安装中", "\n▶ \(item.name)\n\(command.display)\n")
-            let status = run(command) { event(item.id, "安装中", $0) }
+            var recentOutput = ""
+            let status = run(command) { chunk in
+                recentOutput = String((recentOutput + chunk).suffix(16_000))
+                event(item.id, "安装中", chunk)
+            }
             if status != 0 {
                 update(item.id, "失败", "\n安装退出码：\(status)。请检查日志，处理网络、权限或文件冲突后重试。\n")
                 finishPending("未执行")
-                return .init(states: states, summary: "\(item.name) 安装失败，后续步骤未执行。")
+                return .init(states: states, summary: "\(item.name) 安装失败，后续步骤未执行。", issues: [diagnoseInstallFailure(componentID: item.id, status: status, output: recentOutput)])
             }
             update(item.id, "验证中", "\n正在检查工具响应…\n")
             let after = probe()
             guard versionMatches(after[item.id], requested: versions[item.id] ?? "auto") else {
                 update(item.id, "验证失败", "命令已退出，但工具验证未通过。请查看实际安装状态后重试。\n")
                 finishPending("未执行")
-                return .init(states: states, summary: "\(item.name) 验证未通过。")
+                return .init(states: states, summary: "\(item.name) 验证未通过。", issues: [.init(componentID: item.id, title: "安装命令已结束，但验证未通过", detail: after[item.id]?.detail ?? "未检测到所选版本。", suggestion: "重新检测实际安装路径与版本，再查看更新后的计划。已有可用安装会复用；暂时不要手动删除安装目录。")])
             }
             update(item.id, "已安装并验证", "\(after[item.id]?.detail ?? "")\n")
         }

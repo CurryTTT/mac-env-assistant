@@ -2,17 +2,18 @@
 
 使用 SwiftUI 构建的 macOS 开发环境配置助手。按用途浏览或自定义选择工具，检查已有环境与版本，确认安装计划后执行安装，并管理 Python 项目环境、Git 身份和可复用配置方案。
 
-当前版本：**0.7.1，本机试用阶段**。
+当前版本：**0.8.0，本机试用阶段**。
 
 ## 下载
 
-[下载 v0.7.1 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.7.1/MacEnvAssistant-v0.7.1-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.7.1)
+[下载 v0.8.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.8.0/MacEnvAssistant-v0.8.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.8.0)
 
 适用于 Apple Silicon、macOS 14 及以上。打开 DMG，将应用拖入 Applications。当前仅有临时签名，尚未经过 Apple 公证。
 
 ## 功能
 
 - **按用途配置与自定义选择**：AI 编程、本地 AI、软件工程、游戏开发、数据库、网页 / HTML 设计、前端、Python、容器及嵌入式开发。
+- **失败处理**：按安装日志提供网络、空间、权限、校验、文件冲突等排查提示；重新检测后生成新计划，已有可用工具优先复用，不自动重复执行失败命令。
 - **已有环境复用**：检测常见安装位置，所选版本可用时直接复用；必要依赖自动合并，不自动勾选整套软件。
 - **版本选择**：支持部分 Python、Node.js、pnpm、JDK、PostgreSQL 和 MySQL 版本系列。
 - **安装前检查**：已知版本与入口冲突、空间、项目目录及常用下载服务连通性。
@@ -73,3 +74,7 @@ bash test.sh
 `Sources/` 包含 SwiftUI 界面、组件安装与检测、版本规划、项目环境、配置方案和测试入口。`Info.plist` 为应用元数据，`build.sh` 与 `test.sh` 提供本地构建和验证。
 
 项目尚未指定开源许可证。第三方软件分别遵循其自身许可。
+
+## 打包与正式签名
+
+拖拽安装包、Developer ID 签名和公证流程见 [Packaging/README.md](Packaging/README.md)。本机暂无可用签名证书，v0.8.0 仍为临时签名试用版，不能保证直接通过 Gatekeeper。

@@ -103,6 +103,7 @@ final class Model: ObservableObject {
     @Published var states: [String: String] = [:]
     @Published var runSelected = Set<String>()
     @Published var runResults: [String: Probe] = [:]
+    @Published var issues: [InstallIssue] = []
     @Published var summary = "尚未开始安装"
     @Published var log = ""
     @Published var stopRequested = false
@@ -169,6 +170,7 @@ final class Model: ObservableObject {
                 self.results = values
                 self.scanning = false
                 self.scannedAt = Date()
+                if self.page == 2 { self.runPreflight() }
                 if self.taskSucceeded && self.runResults.isEmpty { self.runResults = values }
                 if let id = self.bootstrapID {
                     if values[id]?.available == true {
@@ -194,7 +196,7 @@ final class Model: ObservableObject {
         scan()
     }
     func saveRun() {
-        let record = InstallSnapshot(selected: selected.sorted(), states: states, summary: installing ? "任务运行中；如已中断，请重新检测后重试。" : summary, log: log, versions: versions, projectEnabled: wantsProjectEnvironment, projectDirectory: wantsProjectEnvironment ? projectDirectory : nil, projectResult: projectResult)
+        let record = InstallSnapshot(selected: selected.sorted(), states: states, summary: installing ? "任务运行中；如已中断，请重新检测后重试。" : summary, log: log, versions: versions, projectEnabled: wantsProjectEnvironment, projectDirectory: wantsProjectEnvironment ? projectDirectory : nil, projectResult: projectResult, issues: issues)
         do {
             try FileManager.default.createDirectory(at: Self.historyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(record).write(to: Self.historyURL, options: .atomic)
@@ -210,11 +212,18 @@ final class Model: ObservableObject {
         projectResult = record.projectResult
         resetReadiness()
         states = record.states
+        issues = record.issues ?? []
         runSelected = Set(record.selected)
         runResults = [:]
         log = record.log
         summary = "上次记录：\(record.summary) 请重新检测，并确认计划后重试。"
         page = 3
+        scan()
+    }
+    func reviewAfterFailure() {
+        guard !installing && !scanning && bootstrapID == nil else { return }
+        preflightReport = nil
+        page = 2
         scan()
     }
     func requestStop() {
@@ -260,6 +269,7 @@ final class Model: ObservableObject {
         states = Dictionary(uniqueKeysWithValues: plan.map { ($0.id, "待执行") })
         runSelected = selected
         runResults = [:]
+        issues = []
         resetReadiness()
         states[id] = "准备系统安装"
         summary = id == "clt" ? "正在打开 Apple 安装器…" : "正在下载并检查 Homebrew 官方安装包…"
@@ -333,6 +343,7 @@ final class Model: ObservableObject {
         runSelected = selected
         runResults = [:]
         projectResult = nil
+        issues = []
         resetReadiness()
         summary = "正在重新检查环境…"
         log = "开始时间：\(Date().formatted())\n版本响应验证不代表完整项目兼容性验证。\n"
@@ -361,16 +372,17 @@ final class Model: ObservableObject {
                     outcome = InstallOutcome(states: states, summary: "工具与项目独立环境已安装并验证。")
                 } catch {
                     var states = outcome.states; states["project-venv"] = "失败"
-                    outcome = InstallOutcome(states: states, summary: "项目环境未就绪：" + error.localizedDescription)
+                    outcome = InstallOutcome(states: states, summary: "项目环境未就绪：" + error.localizedDescription, issues: [.init(componentID: "project-venv", title: "项目环境未就绪", detail: error.localizedDescription, suggestion: "检查所选目录及 .venv。软件会保留未完成内容，不自动删除；处理后重新检测，或选择其他项目目录。")])
                 }
             } else if project != nil {
                 var states = outcome.states; states["project-venv"] = currentControl.stopRequested ? "已停止" : "未执行"
-                outcome = InstallOutcome(states: states, summary: outcome.summary + " 项目环境尚未创建或验证。")
+                outcome = InstallOutcome(states: states, summary: outcome.summary + " 项目环境尚未创建或验证。", issues: outcome.issues)
             }
             let finished = outcome
             let projectEnvironment = created
             DispatchQueue.main.async {
                 self.states = finished.states
+                self.issues = finished.issues
                 self.summary = finished.summary
                 self.installing = false
                 InstallAppDelegate.busy = false
@@ -625,7 +637,7 @@ struct ContentView: View {
     }
     var plan: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Label("\(model.installCount) 项需要安装 · \(model.plan.count - model.installCount) 项可复用或待处理", systemImage: "info.circle").font(.headline).foregroundStyle(Color.accentColor)
+            planSummary
             Text("只安装你选的工具及必要依赖。安装可能调整依赖版本，不自动回滚。新安装的 AI 工具需自行登录；Docker 首次启动的协议及初始化由你完成。").font(.callout).foregroundStyle(.secondary)
             if model.scannedAt == nil { Text("检测完成后，计划会根据本机结果更新。").foregroundStyle(.orange) }
             preflightPanel
@@ -703,6 +715,7 @@ struct ContentView: View {
                 HStack { Label("Python 项目独立环境", systemImage: "folder"); Spacer(); Text(state).foregroundStyle(.secondary) }
             }
             if let project = model.projectResult { Text("项目解释器：" + project.python.path).font(.caption).textSelection(.enabled) }
+            failurePanel
             readinessPanel
             if !model.states.isEmpty {
                 ScrollView {
@@ -753,9 +766,9 @@ struct ContentView: View {
                         catch { NSAlert(error: error).runModal() }
                     }
                 }.disabled(model.log.isEmpty)
-                Button(model.taskSucceeded ? "完成，返回首页" : "返回计划 / 重试") {
-                    model.page = model.taskSucceeded ? 5 : 2
-                    if !model.taskSucceeded { model.scan() }
+                Button(model.taskSucceeded ? "完成，返回首页" : "重新检测并查看计划") {
+                    if model.taskSucceeded { model.page = 5 }
+                    else { model.reviewAfterFailure() }
                 }.buttonStyle(.borderedProminent).disabled(model.installing || model.scanning || model.bootstrapID != nil)
             }
         }
@@ -838,7 +851,7 @@ enum Launcher {
             do { try expandedCatalogTests() } catch { fputs("Catalog test failed: \(error)\n", stderr); exit(1) }
             return
         }
-        if CommandLine.arguments.contains("--installer-test") { installerSelfTests(); bootstrapSelfTests(); versionSelectionTests(); purposeSelfTests(); return }
+        if CommandLine.arguments.contains("--installer-test") { installerSelfTests(); installDiagnosticsTests(); bootstrapSelfTests(); versionSelectionTests(); purposeSelfTests(); return }
         if CommandLine.arguments.contains("--self-test") {
             for item in catalog {
                 for dependency in item.dependencies {

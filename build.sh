@@ -18,6 +18,12 @@ mv "$app_path/Contents/MacOS/EnvSetup.new" "$app_path/Contents/MacOS/EnvSetup"
 mkdir -p "$app_path/Contents/Resources"
 cp Resources/AppIcon.icns "$app_path/Contents/Resources/"
 cp Info.plist "$app_path/Contents/Info.plist"
-codesign --force --sign - "$app_path"
+signing_identity="${SIGNING_IDENTITY:--}"
+if [[ "$signing_identity" == "-" ]]; then
+  codesign --force --sign - "$app_path"
+  echo "Local test signature only; Apple notarization has not been performed."
+else
+  codesign --force --options runtime --timestamp --sign "$signing_identity" "$app_path"
+fi
 codesign --verify --deep --strict "$app_path"
 echo "Built: $app_path"
