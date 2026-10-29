@@ -4,6 +4,12 @@
 
 当前版本：**0.7.0，本机试用阶段**。
 
+## 下载与安装
+
+[下载 Apple Silicon DMG](downloads/MacEnvAssistant-v0.7.0-macOS-arm64.dmg?raw=1) · [校验值与安装说明](downloads/README.md)
+
+打开 DMG，将 `MacEnvAssistant.app` 拖入 `Applications`。请先退出旧版应用。安装包适用于 Apple Silicon、macOS 14 及以上；当前采用本地临时签名，尚未完成 Apple Developer ID 签名与公证。
+
 ## 功能
 
 - **按用途配置与自定义选择**：AI 编程、本地 AI、软件工程、游戏开发、数据库、网页 / HTML 设计、前端、Python、容器及嵌入式开发。
