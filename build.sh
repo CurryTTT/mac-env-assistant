@@ -15,6 +15,8 @@ xcrun swiftc -parse-as-library -swift-version 5 \
   -framework SwiftUI -framework AppKit \
   Sources/*.swift -o "$app_path/Contents/MacOS/EnvSetup.new"
 mv "$app_path/Contents/MacOS/EnvSetup.new" "$app_path/Contents/MacOS/EnvSetup"
+mkdir -p "$app_path/Contents/Resources"
+cp Resources/AppIcon.icns "$app_path/Contents/Resources/"
 cp Info.plist "$app_path/Contents/Info.plist"
 codesign --force --sign - "$app_path"
 codesign --verify --deep --strict "$app_path"

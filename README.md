@@ -2,13 +2,13 @@
 
 使用 SwiftUI 构建的 macOS 开发环境配置助手。按用途浏览或自定义选择工具，检查已有环境与版本，确认安装计划后执行安装，并管理 Python 项目环境、Git 身份和可复用配置方案。
 
-当前版本：**0.7.0，本机试用阶段**。
+当前版本：**0.7.1，本机试用阶段**。
 
-## 下载与安装
+## 下载
 
-[下载 Apple Silicon DMG](downloads/MacEnvAssistant-v0.7.0-macOS-arm64.dmg?raw=1) · [校验值与安装说明](downloads/README.md)
+[下载 v0.7.1 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.7.1/MacEnvAssistant-v0.7.1-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.7.1)
 
-打开 DMG，将 `MacEnvAssistant.app` 拖入 `Applications`。请先退出旧版应用。安装包适用于 Apple Silicon、macOS 14 及以上；当前采用本地临时签名，尚未完成 Apple Developer ID 签名与公证。
+适用于 Apple Silicon、macOS 14 及以上。打开 DMG，将应用拖入 Applications。当前仅有临时签名，尚未经过 Apple 公证。
 
 ## 功能
 
