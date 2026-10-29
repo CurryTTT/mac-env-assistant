@@ -44,31 +44,23 @@ func runProbe(_ path: String, _ arguments: [String]) -> (Int32, String)? {
 
 func inspect() -> [String: Probe] {
     var result: [String: Probe] = [:]
+    let context = DiscoveryContext.live
+    let apps = context.applicationRoots.flatMap { discoverAppBundles(root: $0, depth: 2) }
+        + context.toolboxRoots.flatMap { discoverAppBundles(root: $0, depth: 4) }
     let clt = runProbe("/usr/bin/xcode-select", ["-p"])
     for item in catalog {
-        if let name = applicationNames[item.id] {
-            let folders = [FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path, "/Applications"]
-            let app = folders.map { $0 + "/" + name }.first { FileManager.default.fileExists(atPath: $0) }
-            if let app, let bundle = Bundle(path: app), let executable = bundle.executableURL, FileManager.default.isExecutableFile(atPath: executable.path) {
-                result[item.id] = Probe(state: "已检测到", detail: item.name + " " + (bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "版本未知"), path: app)
-            } else { result[item.id] = Probe(state: "未在常见位置发现", detail: "已检查用户及系统 Applications 目录。", path: "") }
-            continue
-        }
-        let paths = (item.paths + extraProbePaths(item.id)).map { NSString(string: $0).expandingTildeInPath }
-        guard let path = paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
-            result[item.id] = Probe(state: "未在常见位置发现", detail: "可能安装在自定义目录或版本管理器目录，请自行核对。", path: "")
-            continue
-        }
-        // Avoid triggering Apple's installation dialog by invoking a developer shim.
-        if item.id == "git" && path == "/usr/bin/git" && clt?.0 != 0 {
-            result[item.id] = Probe(state: "需要检查", detail: "存在系统入口，但命令行工具尚未就绪。", path: path)
-            continue
-        }
-        let response = item.id == "clt" ? clt : runProbe(path, item.arguments)
-        if let (code, text) = response {
-            result[item.id] = Probe(state: code == 0 ? "已检测到" : "需要检查", detail: text.isEmpty ? "工具未返回版本信息" : text, path: path)
+        if applicationNames[item.id] != nil {
+            result[item.id] = probeApplication(item, candidates: applicationCandidates(id: item.id, context: context, discovered: apps))
         } else {
-            result[item.id] = Probe(state: "无法检测", detail: "无法启动检测进程，请检查权限。", path: path)
+            let managed = managedRuntimePaths(item.id, context: context)
+            let paths = (item.paths + extraProbePaths(item.id)).map { context.expand($0) } + managed
+            var probe = probeCommandCandidates(item, paths: paths, cltAvailable: clt?.0 == 0, run: { path, arguments in
+                item.id == "clt" ? clt : runProbe(path, arguments)
+            })
+            if probe.available, managed.contains(probe.path) {
+                probe = Probe(state: probe.state, detail: probe.detail + "\n检测到版本管理器中的解释器；此路径不代表终端默认版本。", path: probe.path)
+            }
+            result[item.id] = probe
         }
     }
     return result
@@ -899,6 +891,10 @@ enum Launcher {
         }
         if CommandLine.arguments.contains("--expanded-test") {
             do { try expandedCatalogTests(); developerCatalogTests() } catch { fputs("Catalog test failed: \(error)\n", stderr); exit(1) }
+            return
+        }
+        if CommandLine.arguments.contains("--discovery-test") {
+            do { try discoveryTests() } catch { fputs("Discovery test failed: \(error)\n", stderr); exit(1) }
             return
         }
         if CommandLine.arguments.contains("--history-test") {

@@ -19,7 +19,7 @@ PYTHON_BIN=/path/to/packaging-venv/bin/python bash Packaging/build-dmg.sh
 ```bash
 SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
   PYTHON_BIN=/path/to/packaging-venv/bin/python bash Packaging/build-dmg.sh
-bash Packaging/notarize.sh dist/MacEnvAssistant-v0.9.0-macOS-arm64.dmg your-keychain-profile
+bash Packaging/notarize.sh dist/MacEnvAssistant-v0.10.0-macOS-arm64.dmg your-keychain-profile
 ```
 
 有显式签名身份时，应用开启 Hardened Runtime 并获取时间戳，DMG 也会签名。公证脚本仅接受 Developer ID 签名镜像，确认 Apple 返回 Accepted 后才附加和验证票据。公证失败时应检查结果 JSON，并按提交 ID 获取 Apple 日志后处理；不能把普通签名校验当成公证成功。

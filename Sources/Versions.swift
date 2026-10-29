@@ -30,24 +30,24 @@ func versionMatches(_ probe: Probe?, requested: String) -> Bool {
     return version == requested || version.hasPrefix(requested + ".")
 }
 
-func selectedVersionProbe(_ item: Component, requested: String, base: [String: Probe]) -> Probe {
+func selectedVersionProbe(_ item: Component, requested: String, base: [String: Probe], context: DiscoveryContext = .live, run: (String, [String]) -> (Int32, String)? = runProbe) -> Probe {
     if let existing = base[item.id], versionMatches(existing, requested: requested) { return existing }
     var candidates = [String]()
     if item.id == "python" {
         candidates = ["/opt/homebrew/bin/python\(requested)", "/usr/local/bin/python\(requested)", "~/.local/bin/python\(requested)"]
         if let uv = base["uv"], uv.available,
-           let (code, output) = runProbe(uv.path, ["python", "find", "--managed-python", "--no-python-downloads", requested]), code == 0 {
-            candidates.insert(output.trimmingCharacters(in: .whitespacesAndNewlines), at: 0)
+           let (code, output) = run(uv.path, ["python", "find", "--managed-python", "--no-python-downloads", requested]), code == 0 {
+            let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            if path.hasPrefix("/"), !path.contains("\n") { candidates.insert(path, at: 0) }
         }
     } else {
         let formula = versionedFormulaPrefix(item.id), binary = versionedBinary(item.id)
         candidates = ["/opt/homebrew/opt/\(formula)@\(requested)/bin/\(binary)", "/usr/local/opt/\(formula)@\(requested)/bin/\(binary)"] + extraProbePaths(item.id)
     }
-    for raw in candidates {
-        let path = NSString(string: raw).expandingTildeInPath
-        guard FileManager.default.isExecutableFile(atPath: path), let (code, detail) = runProbe(path, ["--version"]), code == 0 else { continue }
-        let probe = Probe(state: "已检测到", detail: detail, path: path)
-        if versionMatches(probe, requested: requested) { return probe }
+    candidates = candidates.map { context.expand($0) } + managedRuntimePaths(item.id, requested: requested, context: context)
+    let found = probeCommandCandidates(item, paths: candidates, requested: requested, run: run)
+    if found.available {
+        return Probe(state: found.state, detail: found.detail + "\n已找到所选系列的可用入口；不会切换终端默认版本。", path: found.path)
     }
     if item.id == "mysql", let existing = base[item.id], existing.available {
         return Probe(state: "版本冲突", detail: "已有 MySQL \(versionString(existing) ?? "其他版本")，不自动跨系列切换或迁移数据。请使用匹配版本或自行处理数据迁移。", path: existing.path)

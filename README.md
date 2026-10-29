@@ -2,11 +2,11 @@
 
 使用 SwiftUI 构建的 macOS 开发环境配置助手。按用途浏览或自定义选择工具，检查已有环境与版本，确认安装计划后执行安装，并管理 Python 项目环境、Git 身份和可复用配置方案。选择页面支持类别过滤和搜索。
 
-当前版本：**0.9.0，本机试用阶段**。
+当前版本：**0.10.0，本机试用阶段**。
 
 ## 下载
 
-[下载 v0.9.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.9.0/MacEnvAssistant-v0.9.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.9.0)
+[下载 v0.10.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.10.0/MacEnvAssistant-v0.10.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.10.0)
 
 适用于 Apple Silicon、macOS 14 及以上。打开 DMG，将应用拖入 Applications。当前仅有临时签名，尚未经过 Apple 公证。
 
@@ -15,7 +15,7 @@
 - **按用途配置与自定义选择**：AI 编程、本地 AI、软件工程、游戏开发、数据库、网页 / HTML 设计、前端、Python、容器及嵌入式开发。
 - **失败处理**：按安装日志提供网络、空间、权限、校验、文件冲突等排查提示；重新检测后生成新计划，已有可用工具优先复用，不自动重复执行失败命令。
 - **安装历史**：本机保留最近 20 次任务，查看当时选择、结果、失败提示及运行验证；载入后重新检测，不直接安装。
-- **已有环境复用**：检测常见安装位置，所选版本可用时直接复用；必要依赖自动合并，不自动勾选整套软件。
+- **已有环境复用**：逐个检查候选入口，优先复用可用安装；支持 Applications 有限层级、JetBrains Toolbox 常见目录及 nvm / pyenv / Volta 的部分运行时目录。显示实际使用路径，保留损坏安装的处理提示。覆盖范围见 [DISCOVERY.md](DISCOVERY.md)。
 - **版本选择**：支持部分 Python、Node.js、pnpm、JDK、PostgreSQL 和 MySQL 版本系列。
 - **安装前检查**：已知版本与入口冲突、空间、项目目录及常用下载服务连通性。
 - **Python 项目隔离**：创建或复用 `.venv`，检查解释器、SSL 和 pip，不覆盖冲突或未知目录。
@@ -82,4 +82,4 @@ bash test.sh
 
 ## 打包与正式签名
 
-拖拽安装包、Developer ID 签名和公证流程见 [Packaging/README.md](Packaging/README.md)。本机暂无可用签名证书，v0.9.0 仍为临时签名试用版，不能保证直接通过 Gatekeeper。
+拖拽安装包、Developer ID 签名和公证流程见 [Packaging/README.md](Packaging/README.md)。本机暂无可用签名证书，v0.10.0 仍为临时签名试用版，不能保证直接通过 Gatekeeper。
