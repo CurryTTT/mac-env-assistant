@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+dist/
+*.app/
+*.dSYM/
+*.zip
+*.log
+last-run.json
+.env
+.env.*
+!.env.example
+.venv/
+GitBackups/
