@@ -6,6 +6,8 @@
 
 ## 下载
 
+Windows 首个试用版已单独制作：[Windows 说明](Windows/README.md) · [Windows EXE 下载页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/windows-v0.1.0)。功能范围与 macOS 版不同，尚需 Windows 实机验证。
+
 [下载 v0.10.0 DMG](https://github.com/CurryTTT/mac-env-assistant/releases/download/v0.10.0/MacEnvAssistant-v0.10.0-macOS-arm64.dmg) · [Release 页面](https://github.com/CurryTTT/mac-env-assistant/releases/tag/v0.10.0)
 
 适用于 Apple Silicon、macOS 14 及以上。打开 DMG，将应用拖入 Applications。当前仅有临时签名，尚未经过 Apple 公证。

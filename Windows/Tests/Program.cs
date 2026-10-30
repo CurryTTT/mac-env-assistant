@@ -1,0 +1,47 @@
+using EnvAssistant;
+using System.Text.Json;
+static void Check(bool ok, string detail) { if (!ok) throw new Exception(detail); }
+static void Reject(Action action) { try { action(); } catch (InvalidDataException) { return; } throw new Exception("Expected rejection"); }
+var missing = new Probe(Detection.Missing, null, "");
+var installed = new Probe(Detection.Installed, "3.12.8", "");
+var unknown = new Probe(Detection.Unknown, null, "network failure");
+Check(Catalog.Tools.Select(t => t.Id).Distinct().Count() == Catalog.Tools.Length, "Unique catalog IDs");
+Check(Catalog.Tools.All(t => Uri.IsWellFormedUriString(t.Website, UriKind.Absolute)), "Websites");
+Check(Core.ParseInstalled("Python.Python.3.12", new(0, "名称 ID 版本\nPython 3.12  Python.Python.3.12  3.12.8  winget")).Version == "3.12.8", "Localized list parsing");
+Check(Core.ParseInstalled("Git.Git", new(0, "Git.GitHub 2.0")).State == Detection.Unknown, "No substring match");
+Check(Core.ParseInstalled("Git.Git", new(0, "Name Id Version\nGit.Git 2.0")).State == Detection.Unknown, "Conservative unknown format");
+Check(Core.ParseInstalled("Git.Git", new(Core.NoApplicationsFound, "not found")).State == Detection.Missing, "Explicit missing code");
+Check(Core.ParseInstalled("Git.Git", new(1, "network failure")).State == Detection.Unknown, "Error not missing");
+Check(Core.ParseInstalled("Git.Git", new(Core.NoApplicationsFound, "timeout", true)).State == Detection.Unknown, "Timeout not missing");
+Check(Core.Plan(installed, Core.Auto) == "复用已有安装", "Auto reuse");
+Check(Core.Plan(installed, "3.12.8") == "复用已有安装", "Exact reuse");
+Check(!Core.CanInstall(unknown) && !Core.CanInstall(installed), "Existing and unknown block install");
+Check(Core.Versions("Versions\n-------\n3.12.8\n3.10.1\n3.12.8\n--force\n").SequenceEqual(new[] { "3.12.8", "3.10.1" }), "Version query parsing");
+Reject(() => Core.Validate(new(2, [])));
+Reject(() => Core.Validate(new(1, [new("not-a-package", Core.Auto)])));
+Reject(() => Core.Validate(new(1, [new("Git.Git", "--force")])));
+Reject(() => Core.Validate(new(1, [new("Git.Git", Core.Auto), new("Git.Git", Core.Auto)])));
+var scheme = new Scheme(1, [new("Python.Python.3.12", "3.12.8")]);
+Check(Core.Validate(JsonSerializer.Deserialize<Scheme>(JsonSerializer.Serialize(scheme))!)[0].Version == "3.12.8", "Scheme round trip");
+Check(!Installer.Arguments(new("Git.Git", Core.Auto)).Contains("--accept-package-agreements"), "No automatic package license acceptance");
+Check(!Installer.Arguments(new("Git.Git", Core.Auto)).Contains("--accept-source-agreements"), "No automatic source agreement acceptance");
+Check(Installer.Arguments(new("Git.Git", "2.0.0")).TakeLast(2).SequenceEqual(new[] { "--version", "2.0.0" }), "Argument-separated version");
+int calls = 0;
+Task<CommandResult> Install(Choice c) { calls++; return Task.FromResult(new CommandResult(0, "ok")); }
+Action<string> log = _ => { };
+var result = await Installer.Execute([new("Git.Git", Core.Auto)], _ => Task.FromResult(installed), Install, log, () => false);
+Check(result.Success && calls == 0, "Existing software reused without install");
+result = await Installer.Execute([new("Git.Git", Core.Auto)], _ => Task.FromResult(unknown), Install, log, () => false);
+Check(!result.Success && calls == 0, "Failed probe blocks install");
+result = await Installer.Execute([new("Git.Git", "2.0.0")], _ => Task.FromResult(installed), Install, log, () => false);
+Check(!result.Success && calls == 0, "Different version blocks switching");
+int probes = 0;
+result = await Installer.Execute([new("Git.Git", Core.Auto)], _ => Task.FromResult(++probes == 1 ? missing : installed), Install, log, () => false);
+Check(result.Success && calls == 1 && probes == 2, "Install then verification");
+calls = 0;
+result = await Installer.Execute([new("Git.Git", Core.Auto), new("GitHub.cli", Core.Auto)], _ => Task.FromResult(missing), _ => { calls++; return Task.FromResult(new CommandResult(1, "failed")); }, log, () => false);
+Check(!result.Success && calls == 1, "Stop on failure without retry");
+result = await Installer.Execute([new("Git.Git", Core.Auto)], _ => Task.FromResult(missing), Install, log, () => true);
+Check(!result.Success && calls == 1, "Stop before next installation");
+Check(Core.Clean("\u001b[32mhello\u001b[0m") == "hello", "ANSI cleanup");
+Console.WriteLine("PASS: detection parsing, conservative failures, exact version reuse, scheme validation, install arguments, recheck, install verification, stop and no automatic retry; no third-party software installed.");
